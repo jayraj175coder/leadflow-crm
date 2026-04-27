@@ -1,8 +1,10 @@
 import threading
 import uuid
+from datetime import timedelta
 
 from django.db import close_old_connections
 from django.test import TransactionTestCase
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from .models import BankAccount, LedgerEntry, Merchant, Payout
@@ -43,6 +45,28 @@ class IdempotencyApiTestCase(APITestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["id"], second.json()["id"])
         self.assertEqual(Payout.objects.count(), 1)
+
+    def test_idempotency_key_can_be_reused_after_24_hours(self):
+        payout = Payout.objects.create(
+            merchant=self.merchant,
+            bank_account=self.bank_account,
+            amount_paise=1_000,
+            idempotency_key=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            request_fingerprint="stale-fingerprint",
+            state=Payout.State.COMPLETED,
+        )
+        Payout.objects.filter(id=payout.id).update(created_at=timezone.now() - timedelta(hours=25))
+
+        fresh_payout, created = initiate_payout(
+            merchant_external_id=self.merchant.external_id,
+            amount_paise=2_500,
+            bank_account_id=self.bank_account.id,
+            idempotency_key=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+        )
+
+        self.assertTrue(created)
+        self.assertNotEqual(fresh_payout.id, payout.id)
+        self.assertEqual(Payout.objects.count(), 2)
 
 
 class ConcurrencyTransactionTestCase(TransactionTestCase):
@@ -101,4 +125,3 @@ class ConcurrencyTransactionTestCase(TransactionTestCase):
         self.assertEqual(snapshot.available_balance_paise, 40)
         self.assertEqual(snapshot.held_balance_paise, 60)
         self.assertEqual(snapshot.ledger_balance_paise, 100)
-

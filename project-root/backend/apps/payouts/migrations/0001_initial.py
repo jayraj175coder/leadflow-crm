@@ -70,15 +70,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="payout",
+            index=models.Index(fields=["merchant", "idempotency_key", "created_at"], name="payout_idem_window_idx"),
+        ),
+        migrations.AddIndex(
+            model_name="payout",
             index=models.Index(fields=["state", "next_retry_at"], name="payout_state_retry_idx"),
         ),
         migrations.AddIndex(
             model_name="ledgerentry",
             index=models.Index(fields=["merchant", "bucket", "created_at"], name="ledger_merchant_bucket_idx"),
         ),
-        migrations.AddConstraint(
-            model_name="payout",
-            constraint=models.UniqueConstraint(fields=("merchant", "idempotency_key"), name="uniq_payout_merchant_idempotency"),
-        ),
     ]
-

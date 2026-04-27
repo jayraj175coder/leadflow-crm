@@ -1,9 +1,11 @@
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import BigIntegerField, Case, ExpressionWrapper, F, Sum, Value, When
+from django.utils import timezone
 
 from .models import BankAccount, LedgerEntry, Merchant, Payout
 
@@ -32,6 +34,7 @@ class BalanceSnapshot:
 
 
 NEGATIVE_AMOUNT = ExpressionWrapper(F("amount_paise") * Value(-1), output_field=BigIntegerField())
+IDEMPOTENCY_TTL = timedelta(hours=24)
 
 
 def build_request_fingerprint(*, amount_paise: int, bank_account_id: int) -> str:
@@ -83,6 +86,7 @@ def get_merchant_by_external_id(merchant_external_id: str) -> Merchant:
 
 def initiate_payout(*, merchant_external_id: str, amount_paise: int, bank_account_id: int, idempotency_key) -> tuple[Payout, bool]:
     fingerprint = build_request_fingerprint(amount_paise=amount_paise, bank_account_id=bank_account_id)
+    idempotency_cutoff = timezone.now() - IDEMPOTENCY_TTL
 
     with transaction.atomic():
         merchant = Merchant.objects.select_for_update().get(external_id=merchant_external_id)
@@ -92,7 +96,16 @@ def initiate_payout(*, merchant_external_id: str, amount_paise: int, bank_accoun
             is_active=True,
         )
 
-        existing = Payout.objects.select_related("bank_account").filter(merchant=merchant, idempotency_key=idempotency_key).first()
+        existing = (
+            Payout.objects.select_related("bank_account")
+            .filter(
+                merchant=merchant,
+                idempotency_key=idempotency_key,
+                created_at__gte=idempotency_cutoff,
+            )
+            .order_by("-created_at")
+            .first()
+        )
         if existing:
             if existing.request_fingerprint != fingerprint:
                 raise IdempotencyConflictError("Idempotency key reuse with different request payload.")
@@ -199,4 +212,3 @@ def finalize_payout_failure(payout_id, *, reason: str) -> Payout:
             ]
         )
         return payout
-

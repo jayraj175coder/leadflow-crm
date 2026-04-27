@@ -47,7 +47,7 @@ That is why the repository includes a `TransactionTestCase` proving only one req
 
 ## 3. Idempotency Logic
 
-The API requires an `Idempotency-Key` UUID. The backend stores a unique `(merchant, idempotency_key)` pair and hashes the request payload with SHA-256:
+The API requires an `Idempotency-Key` UUID. The backend hashes the request payload with SHA-256 and looks up prior payouts for the same merchant and key inside a rolling 24-hour window:
 
 - `amount_paise`
 - `bank_account_id`
@@ -56,9 +56,9 @@ Behavior:
 
 1. Same key + same payload returns the original payout response.
 2. Same key + different payload is rejected with `409 Conflict`.
-3. New key creates a new payout and new hold entries.
+3. The same key can be reused after 24 hours and is treated as a fresh request.
 
-This protects against duplicate client retries, load balancer retries, and accidental double submissions.
+The merchant row is locked before this lookup, so even if two identical requests arrive together, only one transaction can create the payout. The second transaction sees the first payout inside the 24-hour window and returns it.
 
 ## 4. State Machine Validation
 
@@ -147,4 +147,3 @@ That makes refund behavior safe even if the worker crashes or Celery redelivers 
 ## 7. Frontend Status Updates
 
 The React dashboard polls `/api/v1/dashboard/` every five seconds. That keeps payout states, held funds, and ledger history fresh without introducing websocket complexity into the assessment.
-

@@ -51,11 +51,9 @@ class Payout(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["merchant", "idempotency_key"], name="uniq_payout_merchant_idempotency"),
-        ]
         indexes = [
             models.Index(fields=["merchant", "created_at"]),
+            models.Index(fields=["merchant", "idempotency_key", "created_at"]),
             models.Index(fields=["state", "next_retry_at"]),
         ]
 
@@ -96,4 +94,3 @@ class LedgerEntry(models.Model):
 
     def __str__(self) -> str:
         return f"{self.merchant.external_id} {self.bucket} {self.entry_type} {self.amount_paise}"
-
