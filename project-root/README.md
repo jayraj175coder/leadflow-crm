@@ -38,8 +38,8 @@ docker compose up --build
 
 - Backend API: `http://localhost:8000/api/v1`
 - Frontend: `http://localhost:5173`
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
+- PostgreSQL: internal to Docker network
+- Redis: internal to Docker network
 
 The backend container runs migrations and seeds demo data automatically.
 
@@ -74,7 +74,8 @@ python backend/manage.py runserver
 7. Start Celery:
 
 ```bash
-celery -A config worker --workdir backend --loglevel=info
+cd backend
+celery -A config worker --loglevel=info
 ```
 
 ## Local Frontend Setup
@@ -120,6 +121,12 @@ Use PostgreSQL for concurrency semantics:
 python backend/manage.py test apps.payouts
 ```
 
+If you are already running the Docker stack, you can run tests with:
+
+```bash
+docker compose exec backend python manage.py test apps.payouts
+```
+
 ## Money Integrity Rules
 
 - All money is stored as paise in `BigIntegerField`.
@@ -127,4 +134,3 @@ python backend/manage.py test apps.payouts
 - Available balance and held balance are derived via SQL aggregation.
 - Payout creation is wrapped in a single database transaction.
 - Merchant row locking prevents double spending under concurrency.
-

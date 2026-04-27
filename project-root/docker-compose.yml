@@ -5,21 +5,31 @@ services:
       POSTGRES_DB: playto
       POSTGRES_USER: playto
       POSTGRES_PASSWORD: playto
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    working_dir: /app/backend
     command: >
-      sh -c "until python -c \"import socket; s=socket.socket(); s.settimeout(1); s.connect(('db', 5432)); s.close()\"; do sleep 1; done &&
-      python backend/manage.py migrate &&
-      python backend/manage.py seed_demo_data &&
-      gunicorn config.wsgi:application --chdir backend --bind 0.0.0.0:8000"
+      sh -c "python manage.py migrate &&
+      python manage.py seed_demo_data &&
+      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --graceful-timeout 30"
     environment:
       DJANGO_SECRET_KEY: change-me
       DJANGO_DEBUG: "0"
@@ -34,8 +44,10 @@ services:
     volumes:
       - ./backend:/app/backend
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
 
@@ -43,10 +55,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: >
-      sh -c "until python -c \"import socket; s=socket.socket(); s.settimeout(1); s.connect(('db', 5432)); s.close()\"; do sleep 1; done &&
-      cd backend &&
-      celery -A config worker --loglevel=info"
+    working_dir: /app/backend
+    command: celery -A config worker --loglevel=info
     environment:
       DJANGO_SECRET_KEY: change-me
       DJANGO_DEBUG: "0"
@@ -61,12 +71,15 @@ services:
     volumes:
       - ./backend:/app/backend
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
       context: ./frontend
+    working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     environment:
       VITE_API_BASE_URL: http://localhost:8000/api/v1
