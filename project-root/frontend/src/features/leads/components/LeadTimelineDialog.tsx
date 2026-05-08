@@ -50,8 +50,8 @@ export function LeadTimelineDialog({ lead }: { lead: Lead | null }) {
       <DialogContent className="max-w-2xl">
         {lead ? (
           <>
-            <div className="flex flex-col gap-4 border-b px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+            <div className="flex flex-col gap-4 border-b px-6 py-5 pr-16 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <DialogTitle className="text-xl font-bold">
                   {lead.name} <span className="font-medium text-muted-foreground">{lead.company ? `(${lead.company})` : ""}</span>
                 </DialogTitle>
@@ -61,7 +61,7 @@ export function LeadTimelineDialog({ lead }: { lead: Lead | null }) {
                 </DialogDescription>
               </div>
               <Select value={lead.status} onValueChange={(status) => updateLead.mutate({ id: lead.id, input: { status: status as LeadStatus } })}>
-                <SelectTrigger className="w-full sm:w-44">
+                <SelectTrigger className="w-full sm:w-52">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

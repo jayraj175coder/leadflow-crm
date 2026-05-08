@@ -20,7 +20,12 @@ export function DialogContent({ className, children, ...props }: DialogPrimitive
       >
         {children}
         <DialogPrimitive.Close asChild>
-          <Button aria-label="Close dialog" size="icon" variant="ghost" className="absolute right-4 top-4">
+          <Button
+            aria-label="Close dialog"
+            size="icon"
+            variant="ghost"
+            className="absolute right-4 top-4 z-10 rounded-full border bg-background/80 shadow-line backdrop-blur hover:bg-muted"
+          >
             <X className="h-4 w-4" />
           </Button>
         </DialogPrimitive.Close>
