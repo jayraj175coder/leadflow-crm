@@ -132,10 +132,18 @@ The UI is a single responsive CRM workspace with:
 
 ## Screenshots
 
+### Lead List
 
-```text
-<img width="1453" height="911" alt="image" src="https://github.com/user-attachments/assets/53d93577-25e5-47b1-b205-5e98e2b165b8" />
-<img width="1482" height="850" alt="image" src="https://github.com/user-attachments/assets/00bf2782-7467-43c7-8902-dbe16d727906" />
-<img width="1608" height="820" alt="image" src="https://github.com/user-attachments/assets/ac0003b0-a40f-429e-adbc-d472a5604f08" />
+![LeadFlow lead list](docs/screenshots/lead-list.png)
 
-```
+### Add New Lead
+
+![LeadFlow add lead modal](docs/screenshots/add-lead.png)
+
+### Lead Timeline
+
+![LeadFlow lead timeline dialog](docs/screenshots/lead-timeline.png)
+
+## AI Usage
+
+AI assistance was used to speed up scaffolding, UI implementation, backend structure, Docker setup, and debugging. The final code was reviewed, tested, and committed manually.
