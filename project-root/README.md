@@ -1,136 +1,141 @@
-# Playto Payout Engine
+# LeadFlow
 
-Production-grade payout engine built with Django, Django REST Framework, PostgreSQL, Celery, Redis, React, and TailwindCSS.
+LeadFlow is a modern fullstack lead management CRM for sales reps to manage leads, track discussions, schedule follow-ups, and update pipeline status from one focused dashboard.
 
-## Stack
+## Tech Stack
 
-- Backend: Django 5, DRF, PostgreSQL
-- Worker: Celery + Redis
-- Frontend: React + Vite + TailwindCSS
-- Data integrity: append-only ledger in paise, transactional holds, idempotent payout creation, row-level locking
+- Frontend: React, Vite, TypeScript, TailwindCSS, shadcn-style UI primitives
+- Backend: Node.js, Express, TypeScript
+- Database: PostgreSQL, Prisma ORM
+- State: React Query for server state, Zustand for UI state
+- Forms: React Hook Form, Zod
+- Dates and icons: date-fns, lucide-react
 
-## Repository Layout
+## Project Structure
 
 ```text
 project-root/
   backend/
-    apps/payouts/
-    config/
-    manage.py
+    prisma/
+      schema.prisma
+      seed.ts
+    src/
+      controllers/
+      middleware/
+      routes/
+      services/
+      utils/
   frontend/
     src/
-  README.md
-  EXPLAINER.md
-  requirements.txt
+      components/
+      features/
+      hooks/
+      pages/
+      services/
+      store/
+      types/
   docker-compose.yml
+  .env.example
 ```
 
-## Quick Start With Docker
+## Quick Start
 
-1. Copy `.env.example` values into your shell or environment.
-2. From the repository root run:
+Copy the environment example if you want local `.env` files:
 
 ```bash
-docker compose up --build
+cp .env.example .env
 ```
 
-3. Services:
-
-- Backend API: `http://localhost:8000/api/v1`
-- Frontend: `http://localhost:5173`
-- PostgreSQL: internal to Docker network
-- Redis: internal to Docker network
-
-The backend container runs migrations and seeds demo data automatically.
-
-## Local Backend Setup
-
-1. Create and activate a Python virtual environment.
-2. Install dependencies:
+Start PostgreSQL with Docker:
 
 ```bash
-pip install -r requirements.txt
+docker-compose up db
 ```
 
-3. Export environment variables from `.env.example`.
-4. Run migrations:
-
-```bash
-python backend/manage.py migrate
-```
-
-5. Seed merchants and ledger data:
-
-```bash
-python backend/manage.py seed_demo_data
-```
-
-6. Start the Django API:
-
-```bash
-python backend/manage.py runserver
-```
-
-7. Start Celery:
+Set up and run the backend:
 
 ```bash
 cd backend
-celery -A config worker --loglevel=info
+npm install
+npx prisma db push
+npx prisma db seed
+npm run dev
 ```
 
-## Local Frontend Setup
-
-1. Install dependencies:
+Set up and run the frontend:
 
 ```bash
 cd frontend
 npm install
-```
-
-2. Start the app:
-
-```bash
 npm run dev
 ```
 
-3. Ensure `VITE_API_BASE_URL=http://localhost:8000/api/v1`.
+Services:
 
-## Demo Merchants
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- Database: `localhost:5432`
 
-`seed_demo_data` creates:
+## Docker
 
-- `MERCHANT_ALPHA`
-- `MERCHANT_BETA`
-- `MERCHANT_GAMMA`
-
-Each merchant includes at least one bank account and a funded ledger balance.
-
-## API Summary
-
-- `GET /api/v1/merchants/`
-- `GET /api/v1/bank-accounts/` with `X-Merchant-External-Id`
-- `GET /api/v1/dashboard/` with `X-Merchant-External-Id`
-- `GET /api/v1/payouts/` with `X-Merchant-External-Id`
-- `POST /api/v1/payouts/` with `X-Merchant-External-Id` and `Idempotency-Key`
-
-## Running Tests
-
-Use PostgreSQL for concurrency semantics:
+Run the full stack:
 
 ```bash
-python backend/manage.py test apps.payouts
+docker-compose up --build
 ```
 
-If you are already running the Docker stack, you can run tests with:
+The backend container runs `prisma db push`, seeds demo leads, and starts the Express API. The frontend runs Vite on port `5173`.
 
-```bash
-docker compose exec backend python manage.py test apps.payouts
+## Environment Variables
+
+```text
+DATABASE_URL="postgresql://leadflow:leadflow@localhost:5432/leadflow?schema=public"
+PORT=8000
+CORS_ORIGIN=http://localhost:5173
+VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
-## Money Integrity Rules
+## API Overview
 
-- All money is stored as paise in `BigIntegerField`.
-- No floating point arithmetic is used anywhere in the backend money flow.
-- Available balance and held balance are derived via SQL aggregation.
-- Payout creation is wrapped in a single database transaction.
-- Merchant row locking prevents double spending under concurrency.
+### Leads
+
+- `GET /api/leads` returns all leads with discussions.
+- `POST /api/leads` creates a lead with default status `NEW`.
+- `PATCH /api/leads/:id` updates lead fields such as status or follow-up time.
+
+### Discussions
+
+- `POST /api/leads/:id/discussions` creates a timeline discussion and updates the lead follow-up.
+
+## Seed Data
+
+`backend/prisma/seed.ts` creates sample leads across all core statuses, including:
+
+- Today's follow-up pinned at the top
+- Overdue follow-up highlighted in red
+- Multiple discussion history entries
+- Won and lost pipeline examples
+
+## UI Notes
+
+The UI is a single responsive CRM workspace with:
+
+- Search by lead name
+- Status filter pills
+- Today's follow-ups pinned above the main list
+- Overdue highlighting
+- Timeline dialog with status updates and discussion logging
+- Add lead dialog with validation
+- Dark mode toggle
+- Loading skeletons and empty states
+- Optimistic React Query updates
+
+## Screenshots
+
+Add screenshots here after running the app locally:
+
+```text
+docs/screenshots/lead-list.png
+docs/screenshots/add-lead.png
+docs/screenshots/lead-timeline.png
+```

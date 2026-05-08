@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: playto
-      POSTGRES_USER: playto
-      POSTGRES_PASSWORD: playto
+      POSTGRES_DB: leadflow
+      POSTGRES_USER: leadflow
+      POSTGRES_PASSWORD: leadflow
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -13,68 +13,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
-    working_dir: /app/backend
-    command: >
-      sh -c "python manage.py migrate &&
-      python manage.py seed_demo_data &&
-      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --graceful-timeout 30"
+      context: ./backend
+    working_dir: /app
+    command: sh -c "npx prisma db push && npx prisma db seed && npm run dev"
     environment:
-      DJANGO_SECRET_KEY: change-me
-      DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
-      POSTGRES_DB: playto
-      POSTGRES_USER: playto
-      POSTGRES_PASSWORD: playto
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      REDIS_URL: redis://redis:6379/0
-      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      DATABASE_URL: postgresql://leadflow:leadflow@db:5432/leadflow?schema=public
+      PORT: 8000
+      CORS_ORIGIN: http://localhost:5173
     volumes:
-      - ./backend:/app/backend
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     ports:
       - "8000:8000"
-
-  worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    working_dir: /app/backend
-    command: celery -A config worker --loglevel=info
-    environment:
-      DJANGO_SECRET_KEY: change-me
-      DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
-      POSTGRES_DB: playto
-      POSTGRES_USER: playto
-      POSTGRES_PASSWORD: playto
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      REDIS_URL: redis://redis:6379/0
-      CORS_ALLOWED_ORIGINS: http://localhost:5173
-    volumes:
-      - ./backend:/app/backend
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   frontend:
     build:
@@ -82,9 +37,10 @@ services:
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     environment:
-      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      VITE_API_BASE_URL: http://localhost:8000/api
     volumes:
       - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     ports:
