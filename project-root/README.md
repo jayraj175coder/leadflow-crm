@@ -144,6 +144,3 @@ The UI is a single responsive CRM workspace with:
 
 ![LeadFlow lead timeline dialog](docs/screenshots/lead-timeline.png)
 
-## AI Usage
-
-AI assistance was used to speed up scaffolding, UI implementation, backend structure, Docker setup, and debugging. The final code was reviewed, tested, and committed manually.
